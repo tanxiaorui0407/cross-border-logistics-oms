@@ -2,7 +2,7 @@
 
 > 面向跨境货代公司与跨境卖家的订单管理系统，覆盖 **下单 → 计费 → 状态流转 → 轨迹追踪 → 对账** 的全生命周期。
 
-## 技术栈（精准对齐后端 JD）
+## 技术栈
 
 | 层 | 技术 | 说明 |
 |---|---|---|
@@ -14,7 +14,7 @@
 
 ## 功能清单
 
-### P0（已完成 · 核心闭环）
+### P0
 - **JWT 登录 + RBAC 三角色**：ADMIN（管理员）/ OPS（操作员）/ CUSTOMER（客户），不同角色订单可见范围不同
 - **渠道与价卡**：物流渠道维护（国际快递/邮政小包/专线）、运价规则（首重续重、目的国、燃油费率、挂号费），价卡查询走 Redis 缓存
 - **订单管理**：下单（幂等 token 防重复提交）、分页+多条件查询、详情、状态流转
@@ -22,7 +22,7 @@
 - **轨迹追踪**：状态机系统事件自动落轨迹 + OPS 手工录入，客户端时间线展示
 - **状态机 + 乐观锁**：10 种状态集中式流转表校验；`UPDATE ... WHERE status=? AND version=?` 防并发覆盖
 
-### P1（已完成）
+### P1
 - **Excel 批量导入**：客户批量下单（EasyExcel），行级校验 + 错误报告下载 + 导入留痕（import_record / import_error）
 - **账单对账**：按月为客户聚合有效订单生成账单（bill + bill_detail），Excel 导出
 
@@ -30,7 +30,7 @@
 - RabbitMQ + 邮件异步状态通知、延迟取消
 - 快递100 / 17track 外部轨迹对接（适配器模式）
 
-## 核心设计（面试弹药库）
+## 核心设计
 
 ### 1. 订单状态机（10 态）
 ```
@@ -79,7 +79,7 @@ mvn package -DskipTests && java -jar target/cross-border-logistics-oms-1.0.0.jar
 docker compose --profile app up -d --build
 ```
 
-### 方式三：H2 免环境演示（无 MySQL / Redis 也能跑）
+### 方式三：H2 免环境演示
 ```bash
 java -jar target/cross-border-logistics-oms-1.0.0.jar --spring.profiles.active=h2
 ```
