@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: oms-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: oms
+      MYSQL_USER: oms
+      MYSQL_PASSWORD: oms123
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql/mysql/init:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uoms", "-poms123"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    container_name: oms-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # 可选：一键起整个应用（也可只在本地跑 jar + 上面的 mysql/redis）
+  app:
+    image: cross-border-logistics-oms:1.0.0
+    container_name: oms-app
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      DB_HOST: mysql
+      REDIS_HOST: redis
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:

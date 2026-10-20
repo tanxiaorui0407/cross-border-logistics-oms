@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>订单管理 - 跨境物流订单管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body data-page="orders">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">跨境物流 OMS</a>
+        <ul class="navbar-nav me-auto" id="navLinks"></ul>
+        <div id="navUser"></div>
+    </div>
+</nav>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">订单列表</h5>
+        <div>
+            <a href="/import" class="btn btn-outline-secondary btn-sm me-2">Excel 批量导入</a>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createModal">新建订单</button>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <form class="row g-2 align-items-end" id="filterForm">
+                <div class="col-auto"><label class="form-label small mb-0">状态</label>
+                    <select class="form-select form-select-sm" id="fStatus">
+                        <option value="">全部</option>
+                        <option value="DRAFT">草稿</option><option value="SUBMITTED">已提交</option>
+                        <option value="PICKED_UP">已揽收</option><option value="IN_TRANSIT">运输中</option>
+                        <option value="CUSTOMS">清关中</option><option value="DELIVERING">派送中</option>
+                        <option value="SIGNED">已签收</option><option value="EXCEPTION">异常</option>
+                        <option value="CANCELED">已取消</option><option value="REJECTED">拒收</option>
+                    </select></div>
+                <div class="col-auto"><label class="form-label small mb-0">单号/品名</label>
+                    <input class="form-control form-control-sm" id="fKeyword" placeholder="搜索"></div>
+                <div class="col-auto" id="customerFilterWrap"><label class="form-label small mb-0">客户</label>
+                    <select class="form-select form-select-sm" id="fCustomer"></select></div>
+                <div class="col-auto"><label class="form-label small mb-0">开始日期</label>
+                    <input type="date" class="form-control form-control-sm" id="fStart"></div>
+                <div class="col-auto"><label class="form-label small mb-0">结束日期</label>
+                    <input type="date" class="form-control form-control-sm" id="fEnd"></div>
+                <div class="col-auto"><button class="btn btn-sm btn-primary" type="submit">查询</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnReset">重置</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+            <tr><th>单号</th><th>客户</th><th>渠道</th><th>品名</th><th>计费重</th><th>状态</th><th>运费</th><th>创建时间</th><th></th></tr>
+            </thead>
+            <tbody id="orderBody"></tbody>
+        </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted small" id="pageInfo"></span>
+        <div><button class="btn btn-sm btn-outline-secondary" id="prevPage">上一页</button>
+            <button class="btn btn-sm btn-outline-secondary" id="nextPage">下一页</button></div>
+    </div>
+</div>
+
+<!-- 新建订单 -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">新建订单</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label">客户 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cCustomer"></select></div>
+                    <div class="col-md-4"><label class="form-label">物流渠道 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cChannel"></select></div>
+                    <div class="col-md-4"><label class="form-label">目的国 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="cCountry">
+                            <option value="US">美国 US</option><option value="GB">英国 GB</option>
+                            <option value="DE">德国 DE</option><option value="FR">法国 FR</option>
+                        </select></div>
+                    <div class="col-md-4"><label class="form-label">品名 <span class="text-danger">*</span></label>
+                        <input class="form-control" id="cGoods" placeholder="如：蓝牙耳机"></div>
+                    <div class="col-md-2"><label class="form-label">件数</label>
+                        <input class="form-control" id="cPieces" type="number" value="1" min="1"></div>
+                    <div class="col-md-2"><label class="form-label">实重kg <span class="text-danger">*</span></label>
+                        <input class="form-control" id="cWeight" type="number" step="0.001"></div>
+                    <div class="col-md-2"><label class="form-label">长cm</label>
+                        <input class="form-control" id="cLen" type="number" step="0.1"></div>
+                    <div class="col-md-2"><label class="form-label">宽cm</label>
+                        <input class="form-control" id="cWid" type="number" step="0.1"></div>
+                    <div class="col-md-2"><label class="form-label">高cm</label>
+                        <input class="form-control" id="cHei" type="number" step="0.1"></div>
+                    <div class="col-md-6"><label class="form-label">寄件人 <span class="text-danger">*</span></label>
+                        <div class="input-group"><input class="form-control" id="sName" placeholder="姓名">
+                            <input class="form-control" id="sPhone" placeholder="电话"></div>
+                        <input class="form-control mt-1" id="sCity" placeholder="城市">
+                        <input class="form-control mt-1" id="sStreet" placeholder="街道">
+                        <input class="form-control mt-1" id="sZip" placeholder="邮编"></div>
+                    <div class="col-md-6"><label class="form-label">收件人 <span class="text-danger">*</span></label>
+                        <div class="input-group"><input class="form-control" id="rName" placeholder="姓名">
+                            <input class="form-control" id="rPhone" placeholder="电话"></div>
+                        <input class="form-control mt-1" id="rCity" placeholder="城市">
+                        <input class="form-control mt-1" id="rStreet" placeholder="街道">
+                        <input class="form-control mt-1" id="rZip" placeholder="邮编"></div>
+                    <div class="col-12"><div class="alert alert-info py-2 mb-0" id="quoteResult">填写重量/尺寸后可先试算</div></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" id="btnQuote">试算运费</button>
+                <button class="btn btn-primary" id="btnCreate">提交订单</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    $(function () {
+        if (!requireLogin()) return;
+        const user = getUser();
+        let current = 1, size = 10, totalPages = 1;
+
+        function loadCustomers(selected) {
+            apiGet('/api/customers').done(function (res) {
+                if (res.code !== 0) return;
+                let html = '';
+                res.data.forEach(c => {
+                    html += `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>${c.companyName} (${c.customerCode})</option>`;
+                });
+                $('#cCustomer').html(html);
+                if (user.role === 'CUSTOMER') {
+                    $('#cCustomer').val(user.customerId).prop('disabled', true);
+                }
+                if (user.role !== 'CUSTOMER') {
+                    $('#customerFilterWrap').show();
+                    let fh = '<option value="">全部</option>';
+                    res.data.forEach(c => { fh += `<option value="${c.id}">${c.companyName}</option>`; });
+                    $('#fCustomer').html(fh);
+                } else { $('#customerFilterWrap').hide(); }
+                if (user.role === 'CUSTOMER') { loadProfile(); }
+            });
+        }
+
+        function loadProfile() {
+            apiGet('/api/customers/me').done(function (res) {
+                if (res.code !== 0 || !res.data) return;
+                $('#sName').val(res.data.contact || '').prop('placeholder', '寄件人');
+                $('#sCity').val(''); $('#sStreet').val('');
+            });
+        }
+
+        function loadChannels(selected) {
+            apiGet('/api/channels').done(function (res) {
+                if (res.code !== 0) return;
+                let html = '';
+                res.data.forEach(c => {
+                    html += `<option value="${c.id}" ${c.id === selected ? 'selected' : ''}>${c.channelName}（时效${c.etaDays}天）</option>`;
+                });
+                $('#cChannel').html(html);
+            });
+        }
+
+        function loadOrders() {
+            const params = { page: current, size: size };
+            if ($('#fStatus').val()) params.status = $('#fStatus').val();
+            if ($('#fKeyword').val()) params.keyword = $('#fKeyword').val();
+            if ($('#fCustomer').val() && user.role !== 'CUSTOMER') params.customerId = $('#fCustomer').val();
+            if ($('#fStart').val()) params.startDate = $('#fStart').val();
+            if ($('#fEnd').val()) params.endDate = $('#fEnd').val();
+            apiGet('/api/orders', params).done(function (res) {
+                if (res.code !== 0) { alert(res.msg); return; }
+                const data = res.data;
+                let html = '';
+                (data.records || []).forEach(o => {
+                    html += `<tr>
+                        <td>${o.orderNo}</td><td>${o.customerName || '-'}</td><td>${o.channelName || '-'}</td>
+                        <td>${o.goodsDesc || '-'}</td><td>${o.billableWeight != null ? o.billableWeight + ' kg' : '-'}</td>
+                        <td><span class="badge bg-${statusClass(o.status)}">${o.statusDesc || statusLabel(o.status)}</span></td>
+                        <td>${fmtMoney(o.freight)} ${o.currency}</td><td>${fmtTime(o.createdAt)}</td>
+                        <td><a href="/order/${o.id}" class="btn btn-sm btn-outline-primary">详情</a></td></tr>`;
+                });
+                $('#orderBody').html(html || '<tr><td colspan="9" class="text-center text-muted">暂无数据</td></tr>');
+                totalPages = data.pages || 1;
+                $('#pageInfo').text(`共 ${data.total} 条 / 第 ${data.current} 页`);
+                $('#prevPage').prop('disabled', data.current <= 1);
+                $('#nextPage').prop('disabled', data.current >= totalPages);
+            });
+        }
+
+        $('#filterForm').on('submit', function (e) { e.preventDefault(); current = 1; loadOrders(); });
+        $('#btnReset').on('click', function () { $('#filterForm')[0].reset(); current = 1; loadOrders(); });
+        $('#prevPage').on('click', function () { if (current > 1) { current--; loadOrders(); } });
+        $('#nextPage').on('click', function () { if (current < totalPages) { current++; loadOrders(); } });
+
+        // 试算
+        $('#btnQuote').on('click', function () {
+            const data = {
+                destCountry: $('#cCountry').val(),
+                actualWeight: $('#cWeight').val(),
+                lengthCm: $('#cLen').val() || null,
+                widthCm: $('#cWid').val() || null,
+                heightCm: $('#cHei').val() || null
+            };
+            if (!data.actualWeight) { alert('请填写实重'); return; }
+            apiPost('/api/quote/preview', data).done(function (res) {
+                if (res.code !== 0) { $('#quoteResult').removeClass('alert-info').addClass('alert-warning').text(res.msg); return; }
+                let text = '比价结果（按价格排序）：';
+                res.data.forEach(q => {
+                    text += ` [${q.channelName} ${fmtMoney(q.freight)}${q.currency}，时效${q.etaDays}天]`;
+                });
+                $('#quoteResult').removeClass('alert-warning').addClass('alert-info').text(text);
+            });
+        });
+
+        // 提交订单（幂等 token 防重复）
+        $('#btnCreate').on('click', function () {
+            const body = {
+                channelId: Number($('#cChannel').val()),
+                customerId: user.role === 'CUSTOMER' ? null : Number($('#cCustomer').val()),
+                goodsDesc: $('#cGoods').val().trim(),
+                pieces: Number($('#cPieces').val() || 1),
+                actualWeight: Number($('#cWeight').val()),
+                lengthCm: $('#cLen').val() ? Number($('#cLen').val()) : null,
+                widthCm: $('#cWid').val() ? Number($('#cWid').val()) : null,
+                heightCm: $('#cHei').val() ? Number($('#cHei').val()) : null,
+                destCountry: $('#cCountry').val(),
+                sender: { name: $('#sName').val().trim(), phone: $('#sPhone').val(), country: 'CN',
+                    city: $('#sCity').val(), street: $('#sStreet').val(), zip: $('#sZip').val() },
+                receiver: { name: $('#rName').val().trim(), phone: $('#rPhone').val(), country: $('#cCountry').val(),
+                    city: $('#rCity').val(), street: $('#rStreet').val(), zip: $('#rZip').val() }
+            };
+            const token = 'idem-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            $.ajax({
+                url: '/api/orders', method: 'POST',
+                headers: { 'X-Idempotency-Token': token },
+                contentType: 'application/json;charset=UTF-8',
+                data: JSON.stringify(body), dataType: 'json'
+            }).done(function (res) {
+                if (res.code === 0) {
+                    showToast('下单成功，单号 ' + res.data.orderNo, 'success');
+                    $('#createModal').modal('hide');
+                    current = 1; loadOrders();
+                } else { alert(res.msg); }
+            }).fail(function (xhr) {
+                const r = xhr.responseJSON; alert(r && r.msg ? r.msg : '下单失败');
+            });
+        });
+
+        loadCustomers();
+        loadChannels();
+        loadOrders();
+    });
+</script>
+</body>
+</html>

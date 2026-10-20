@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>仪表盘 - 跨境物流订单管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body data-page="index">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">跨境物流 OMS</a>
+        <ul class="navbar-nav me-auto" id="navLinks"></ul>
+        <div id="navUser"></div>
+    </div>
+</nav>
+<div class="container-fluid py-4">
+    <h5 class="mb-3">订单状态总览</h5>
+    <div class="row g-3 mb-4" id="statCards"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">最近订单</h5>
+        <a href="/orders" class="btn btn-sm btn-outline-primary">查看全部</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+            <tr><th>单号</th><th>客户</th><th>渠道</th><th>品名</th><th>状态</th><th>运费</th><th>创建时间</th><th></th></tr>
+            </thead>
+            <tbody id="recentBody"></tbody>
+        </table>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    $(function () {
+        if (!requireLogin()) return;
+        const statusOrder = ['SUBMITTED', 'PICKED_UP', 'IN_TRANSIT', 'CUSTOMS', 'DELIVERING', 'EXCEPTION', 'SIGNED', 'DRAFT', 'CANCELED', 'REJECTED'];
+        apiGet('/api/orders/stats').done(function (res) {
+            if (res.code !== 0) return;
+            const stats = res.data;
+            let html = '';
+            statusOrder.forEach(s => {
+                if (!stats[s]) return;
+                html += `<div class="col-6 col-md-3 col-lg-2">
+                    <div class="card text-center h-100"><div class="card-body py-3">
+                        <div class="fs-4 fw-bold text-${statusClass(s)}">${stats[s]}</div>
+                        <div class="text-muted small">${statusLabel(s)}</div>
+                    </div></div></div>`;
+            });
+            html += `<div class="col-6 col-md-3 col-lg-2">
+                <div class="card text-center h-100"><div class="card-body py-3">
+                    <div class="fs-4 fw-bold">${stats['TOTAL'] || 0}</div><div class="text-muted small">全部订单</div>
+                </div></div></div>`;
+            $('#statCards').html(html);
+        });
+        apiGet('/api/orders', { page: 1, size: 5 }).done(function (res) {
+            if (res.code !== 0) return;
+            const rows = res.data.records || [];
+            let html = '';
+            rows.forEach(o => {
+                html += `<tr>
+                    <td>${o.orderNo}</td><td>${o.customerName || '-'}</td><td>${o.channelName || '-'}</td>
+                    <td>${o.goodsDesc || '-'}</td>
+                    <td><span class="badge bg-${statusClass(o.status)}">${o.statusDesc || statusLabel(o.status)}</span></td>
+                    <td>${fmtMoney(o.freight)} ${o.currency}</td><td>${fmtTime(o.createdAt)}</td>
+                    <td><a href="/order/${o.id}" class="btn btn-sm btn-outline-primary">详情</a></td></tr>`;
+            });
+            $('#recentBody').html(html || '<tr><td colspan="8" class="text-center text-muted">暂无订单</td></tr>');
+        });
+    });
+</script>
+</body>
+</html>

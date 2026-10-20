@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>订单详情 - 跨境物流订单管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body data-page="orders">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">跨境物流 OMS</a>
+        <ul class="navbar-nav me-auto" id="navLinks"></ul>
+        <div id="navUser"></div>
+    </div>
+</nav>
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center mb-3">
+        <a href="/orders" class="btn btn-sm btn-outline-secondary me-3">← 返回列表</a>
+        <h5 class="mb-0" id="orderTitle">订单详情</h5>
+        <span class="ms-3" id="statusBadge"></span>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card mb-3">
+                <div class="card-header">订单信息</div>
+                <div class="card-body" id="orderInfo"></div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header">收寄信息</div>
+                <div class="card-body" id="addrInfo"></div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header">轨迹时间线</div>
+                <div class="card-body" id="timeline"></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header">操作</div>
+                <div class="card-body">
+                    <label class="form-label small">状态流转（按角色开放）</label>
+                    <div id="transitionBtns" class="d-grid gap-2 mb-3"></div>
+                    <hr>
+                    <div id="trackForm" class="d-none">
+                        <label class="form-label small">录入轨迹（OPS）</label>
+                        <input class="form-control form-control-sm mb-1" id="tDesc" placeholder="事件描述，如：到达纽约分拨中心">
+                        <input class="form-control form-control-sm mb-1" id="tLoc" placeholder="地点（可选）">
+                        <button class="btn btn-sm btn-outline-primary w-100" id="btnTrack">提交轨迹</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    $(function () {
+        if (!requireLogin()) return;
+        const user = getUser();
+        const id = location.pathname.split('/')[2];
+        let order = null;
+
+        function render() {
+            $('#orderTitle').text('订单 ' + order.orderNo);
+            $('#statusBadge').html(`<span class="badge bg-${statusClass(order.status)}">${order.statusDesc || statusLabel(order.status)}</span>`);
+            $('#orderInfo').html(`<table class="table table-sm mb-0">
+                <tr><td class="text-muted" style="width:110px">单号</td><td>${order.orderNo}</td></tr>
+                <tr><td class="text-muted">客户</td><td>${order.customerName || '-'}</td></tr>
+                <tr><td class="text-muted">渠道</td><td>${order.channelName || '-'}（${order.transportType || '-'}）</td></tr>
+                <tr><td class="text-muted">品名</td><td>${order.goodsDesc || '-'}</td></tr>
+                <tr><td class="text-muted">件数</td><td>${order.pieces}</td></tr>
+                <tr><td class="text-muted">实重</td><td>${order.actualWeight != null ? order.actualWeight + ' kg' : '-'}</td></tr>
+                <tr><td class="text-muted">体积重</td><td>${order.volWeight != null ? order.volWeight + ' kg' : '-'}</td></tr>
+                <tr><td class="text-muted">计费重</td><td>${order.billableWeight != null ? order.billableWeight + ' kg' : '-'}</td></tr>
+                <tr><td class="text-muted">运费</td><td class="fw-bold">${fmtMoney(order.freight)} ${order.currency}</td></tr>
+                <tr><td class="text-muted">创建时间</td><td>${fmtTime(order.createdAt)}</td></tr>
+            </table>`);
+
+            let addrHtml = '<div class="row"><div class="col-md-6"><h6>寄件人</h6>';
+            if (order.sender) {
+                addrHtml += `<p class="mb-0">${order.sender.name} ${order.sender.phone || ''}<br>${order.sender.country} ${order.sender.city || ''} ${order.sender.street || ''} ${order.sender.zip || ''}</p>`;
+            }
+            addrHtml += '</div><div class="col-md-6"><h6>收件人</h6>';
+            if (order.receiver) {
+                addrHtml += `<p class="mb-0">${order.receiver.name} ${order.receiver.phone || ''}<br>${order.receiver.country} ${order.receiver.city || ''} ${order.receiver.street || ''} ${order.receiver.zip || ''}</p>`;
+            }
+            addrHtml += '</div></div>';
+            $('#addrInfo').html(addrHtml);
+
+            let tl = '';
+            if (order.trackEvents && order.trackEvents.length) {
+                tl = '<ul class="list-group">';
+                order.trackEvents.forEach(e => {
+                    tl += `<li class="list-group-item d-flex justify-content-between align-items-start">
+                        <div><div class="fw-semibold">${e.eventDesc}</div>
+                        <div class="text-muted small">${e.eventCode}${e.location ? ' · ' + e.location : ''} · 操作人 ${e.operator || '-'}</div></div>
+                        <span class="text-muted small text-nowrap">${fmtTime(e.eventTime)}</span></li>`;
+                });
+                tl += '</ul>';
+            } else { tl = '<p class="text-muted mb-0">暂无轨迹</p>'; }
+            $('#timeline').html(tl);
+
+            let btns = '';
+            (order.allowedTransitions || []).forEach(t => {
+                btns += `<button class="btn btn-outline-${statusClass(t)} btn-sm" onclick="doTransition('${t}')">流转至：${statusLabel(t)}</button>`;
+            });
+            $('#transitionBtns').html(btns || '<span class="text-muted small">当前无可用流转</span>');
+
+            if (user.role === 'OPS' || user.role === 'ADMIN') { $('#trackForm').removeClass('d-none'); }
+        }
+
+        window.doTransition = function (to) {
+            if (!confirm(`确认将订单流转为「${statusLabel(to)}」？`)) return;
+            apiPost('/api/orders/' + id + '/transition', { targetStatus: to }).done(function (res) {
+                if (res.code === 0) { showToast('流转成功', 'success'); order = res.data; render(); }
+                else { alert(res.msg); }
+            }).fail(function (xhr) {
+                const r = xhr.responseJSON; alert(r && r.msg ? r.msg : '流转失败');
+            });
+        };
+
+        $('#btnTrack').on('click', function () {
+            const body = { eventDesc: $('#tDesc').val().trim(), location: $('#tLoc').val().trim() || null };
+            if (!body.eventDesc) { alert('请填写事件描述'); return; }
+            apiPost('/api/orders/' + id + '/track', body).done(function (res) {
+                if (res.code === 0) { showToast('轨迹已录入', 'success'); $('#tDesc').val(''); $('#tLoc').val(''); load(); }
+                else { alert(res.msg); }
+            });
+        });
+
+        function load() {
+            apiGet('/api/orders/' + id).done(function (res) {
+                if (res.code !== 0) { alert(res.msg); return; }
+                order = res.data;
+                render();
+            }).fail(function () { alert('订单不存在或无权访问'); });
+        }
+        load();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>登录 - 跨境物流订单管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container" style="max-width:420px;margin-top:12vh;">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h4 class="card-title text-center mb-1">跨境物流订单管理系统</h4>
+            <p class="text-center text-muted small mb-4">下单 · 计费 · 轨迹 · 对账</p>
+            <div id="err" class="alert alert-danger d-none"></div>
+            <div class="mb-3">
+                <label class="form-label">用户名</label>
+                <input id="username" class="form-control" placeholder="admin / ops / alice / bob" autocomplete="username">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">密码</label>
+                <input id="password" type="password" class="form-control" placeholder="默认 123456" autocomplete="current-password">
+            </div>
+            <button id="btnLogin" class="btn btn-primary w-100">登 录</button>
+            <p class="text-muted small mt-3 mb-0">
+                演示账号：admin(管理员) / ops(操作员) / alice·bob(客户)，密码均为 123456
+            </p>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+    $(function () {
+        if (getToken()) { location.href = '/'; }
+        function doLogin() {
+            const username = $('#username').val().trim();
+            const password = $('#password').val();
+            if (!username || !password) { showErr('请输入用户名和密码'); return; }
+            $.ajax({
+                url: '/api/auth/login', method: 'POST',
+                contentType: 'application/json;charset=UTF-8',
+                data: JSON.stringify({ username, password }), dataType: 'json'
+            }).done(function (res) {
+                if (res.code === 0) {
+                    localStorage.setItem(TOKEN_KEY, res.data.token);
+                    localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
+                    location.href = '/';
+                } else { showErr(res.msg); }
+            }).fail(function (xhr) {
+                const r = xhr.responseJSON;
+                showErr(r && r.msg ? r.msg : '登录失败，请重试');
+            });
+        }
+        function showErr(msg) {
+            $('#err').removeClass('d-none').text(msg);
+        }
+        $('#btnLogin').on('click', doLogin);
+        $('#password').on('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+    });
+</script>
+</body>
+</html>
